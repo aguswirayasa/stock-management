@@ -21,9 +21,20 @@ export default withAuth(
           return true;
         }
 
-        // Require authentication for all other routes under /dashboard
-        // You can add more routes here if needed
-        if (req.nextUrl.pathname.startsWith("/dashboard")) {
+        const protectedPrefixes = ["/dashboard", "/stock"];
+        const isProtected = protectedPrefixes.some((prefix) =>
+          req.nextUrl.pathname.startsWith(prefix)
+        );
+
+        if (req.nextUrl.pathname.startsWith("/stock/in")) {
+          return token?.role === "ADMIN";
+        }
+
+        if (req.nextUrl.pathname.startsWith("/stock/history")) {
+          return token?.role === "ADMIN";
+        }
+
+        if (isProtected) {
           return !!token;
         }
 
@@ -37,5 +48,5 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/stock/:path*", "/login"],
 };

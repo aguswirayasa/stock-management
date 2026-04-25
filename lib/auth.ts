@@ -26,6 +26,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error("User not found");
         }
 
+        if (user.isActive === false) {
+          throw new Error("User is inactive");
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
@@ -37,8 +41,10 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id,
+          name: user.name,
           username: user.username,
           role: user.role,
+          isActive: user.isActive,
         };
       },
     }),
@@ -47,16 +53,37 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name;
         token.role = user.role;
         token.username = user.username;
+        token.isActive = user.isActive;
       }
+
+      if (token.id) {
+        const persistedUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, username: true, role: true, isActive: true },
+        });
+
+        if (persistedUser) {
+          token.name = persistedUser.name;
+          token.username = persistedUser.username;
+          token.role = persistedUser.role;
+          token.isActive = persistedUser.isActive;
+        } else {
+          token.isActive = false;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.name = (token.name || token.username) as string;
         session.user.role = token.role as "ADMIN" | "PEGAWAI";
         session.user.username = token.username as string;
+        session.user.isActive = token.isActive as boolean;
       }
       return session;
     },
