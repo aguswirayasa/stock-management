@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import type { UserRole } from "@/lib/user-roles";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -81,7 +82,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.name = (token.name || token.username) as string;
-        session.user.role = token.role as "ADMIN" | "PEGAWAI";
+        session.user.role = token.role as UserRole;
         session.user.username = token.username as string;
         session.user.isActive = token.isActive as boolean;
       }

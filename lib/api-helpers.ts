@@ -19,9 +19,6 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Generate a successful API response
- */
 export function apiResponse<T>(data: T, status = 200, message?: string) {
   return NextResponse.json(
     { success: true, data, message },
@@ -29,9 +26,6 @@ export function apiResponse<T>(data: T, status = 200, message?: string) {
   );
 }
 
-/**
- * Generate an error API response
- */
 export function apiError(message: string, status = 400) {
   return NextResponse.json(
     { success: false, error: message },
@@ -39,9 +33,6 @@ export function apiError(message: string, status = 400) {
   );
 }
 
-/**
- * Wrap API route with error handling
- */
 export function withErrorHandler<TArgs extends unknown[]>(
   handler: (...args: TArgs) => Promise<Response>
 ) {
@@ -62,9 +53,6 @@ export function withErrorHandler<TArgs extends unknown[]>(
   };
 }
 
-/**
- * Get current user session, throw if not authenticated
- */
 export async function requireAuth() {
   const session = await getServerSession(authOptions);
   
@@ -79,9 +67,6 @@ export async function requireAuth() {
   return session.user;
 }
 
-/**
- * Get current user session, throw if not authenticated or not ADMIN
- */
 export async function requireAdmin() {
   const user = await requireAuth();
   

@@ -1,8 +1,15 @@
 import prisma from "@/lib/prisma";
-import { apiResponse, apiError, withErrorHandler, requireAdmin } from "@/lib/api-helpers";
+import {
+  ApiError,
+  apiResponse,
+  requireAdmin,
+  requireAuth,
+  withErrorHandler,
+} from "@/lib/api-helpers";
 
-// GET /api/variations/types — list all variation types with value count
 export const GET = withErrorHandler(async () => {
+  await requireAuth();
+
   const types = await prisma.variationType.findMany({
     include: {
       _count: { select: { values: true, productVariationTypes: true } },
@@ -14,7 +21,6 @@ export const GET = withErrorHandler(async () => {
   return apiResponse(types);
 });
 
-// POST /api/variations/types — create a new VariationType
 export const POST = withErrorHandler(async (req: Request) => {
   await requireAdmin();
 
@@ -22,15 +28,16 @@ export const POST = withErrorHandler(async (req: Request) => {
   const { name } = body;
 
   if (!name || typeof name !== "string" || name.trim().length === 0) {
-    return apiError("Name is required", 400);
+    throw new ApiError("Nama tipe variasi wajib diisi.", 400);
   }
 
   const trimmed = name.trim();
 
-  // Check duplicate
-  const existing = await prisma.variationType.findUnique({ where: { name: trimmed } });
+  const existing = await prisma.variationType.findUnique({
+    where: { name: trimmed },
+  });
   if (existing) {
-    return apiError(`Variation type "${trimmed}" already exists`, 409);
+    throw new ApiError(`Tipe variasi "${trimmed}" sudah ada.`, 409);
   }
 
   const variationType = await prisma.variationType.create({
@@ -38,5 +45,9 @@ export const POST = withErrorHandler(async (req: Request) => {
     include: { _count: { select: { values: true } } },
   });
 
-  return apiResponse(variationType, 201, `Tipe variasi "${trimmed}" berhasil dibuat`);
+  return apiResponse(
+    variationType,
+    201,
+    `Tipe variasi "${trimmed}" berhasil dibuat.`
+  );
 });

@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmAction } from "@/components/ui/confirm-action";
 
 type UserRole = "ADMIN" | "PEGAWAI";
 
@@ -156,14 +157,6 @@ export function UserManagementClient({
   };
 
   const setUserActive = async (user: ManagedUser, nextIsActive: boolean) => {
-    if (!nextIsActive) {
-      const confirmed = window.confirm(
-        `Nonaktifkan ${user.name}? User ini tidak bisa login sampai diaktifkan kembali.`
-      );
-
-      if (!confirmed) return;
-    }
-
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: nextIsActive ? "PUT" : "DELETE",
@@ -577,24 +570,36 @@ function UserActions({
       >
         <Edit className="h-4 w-4" />
       </button>
-      <button
-        type="button"
-        disabled={statusDisabled}
-        onClick={() => onSetActive(user, !user.isActive)}
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[13px] font-bold text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515] disabled:cursor-not-allowed disabled:opacity-45"
-      >
-        {user.isActive ? (
-          <>
-            <Trash2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Nonaktifkan</span>
-          </>
-        ) : (
-          <>
-            <UserCheck className="h-4 w-4" />
-            <span className="hidden sm:inline">Aktifkan</span>
-          </>
-        )}
-      </button>
+      {user.isActive ? (
+        <ConfirmAction
+          title="Nonaktifkan user"
+          message={`Nonaktifkan ${user.name}? User ini tidak bisa login sampai diaktifkan kembali.`}
+          confirmLabel="Nonaktifkan"
+          disabled={statusDisabled}
+          onConfirm={() => onSetActive(user, false)}
+          trigger={(open) => (
+            <button
+              type="button"
+              disabled={statusDisabled}
+              onClick={open}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[13px] font-bold text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Nonaktifkan</span>
+            </button>
+          )}
+        />
+      ) : (
+        <button
+          type="button"
+          disabled={statusDisabled}
+          onClick={() => onSetActive(user, true)}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[13px] font-bold text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <UserCheck className="h-4 w-4" />
+          <span className="hidden sm:inline">Aktifkan</span>
+        </button>
+      )}
     </div>
   );
 }

@@ -14,8 +14,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { ConfirmAction } from "@/components/ui/confirm-action";
 
 interface VariationValue {
   id: string;
@@ -30,8 +29,6 @@ interface VariationType {
   values: VariationValue[];
   _count?: { values: number; productVariationTypes: number };
 }
-
-// ─── Inline Editable Label ────────────────────────────────────────────────────
 
 function InlineEdit({
   initialValue,
@@ -77,8 +74,6 @@ function InlineEdit({
     </span>
   );
 }
-
-// ─── Add Value Inline Form ────────────────────────────────────────────────────
 
 function AddValueForm({
   typeId,
@@ -142,8 +137,6 @@ function AddValueForm({
   );
 }
 
-// ─── Value Chip ───────────────────────────────────────────────────────────────
-
 function ValueChip({
   val,
   onDelete,
@@ -157,7 +150,6 @@ function ValueChip({
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`Hapus nilai "${val.value}"?`)) return;
     setDeleting(true);
     try { await onDelete(val.id); } finally { setDeleting(false); }
   };
@@ -184,22 +176,29 @@ function ValueChip({
             <button onClick={() => setEditing(true)} className="text-[#939084] hover:text-[#201515] p-0.5" title="Edit">
               <Pencil className="w-3 h-3" />
             </button>
-            <button
-              onClick={handleDelete}
+            <ConfirmAction
+              title="Hapus nilai variasi"
+              message={`Hapus nilai "${val.value}"?`}
+              confirmLabel="Hapus"
               disabled={deleting || inUse}
-              title={inUse ? "Tidak bisa dihapus: sedang digunakan SKU" : "Hapus"}
-              className="text-[#939084] hover:text-red-500 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-            </button>
+              onConfirm={handleDelete}
+              trigger={(open) => (
+                <button
+                  onClick={open}
+                  disabled={deleting || inUse}
+                  title={inUse ? "Tidak bisa dihapus: sedang digunakan SKU" : "Hapus"}
+                  className="text-[#939084] hover:text-red-500 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                </button>
+              )}
+            />
           </span>
         </>
       )}
     </span>
   );
 }
-
-// ─── Type Card ─────────────────────────────────────────────────────────────────
 
 function TypeCard({
   type,
@@ -223,14 +222,12 @@ function TypeCard({
   const inUse = (type._count?.productVariationTypes ?? 0) > 0;
 
   const handleDelete = async () => {
-    if (!confirm(`Hapus tipe variasi "${type.name}"? Semua nilainya juga akan dihapus.`)) return;
     setDeleting(true);
     try { await onTypeDelete(type.id); } finally { setDeleting(false); }
   };
 
   return (
     <article className="border border-[#c5c0b1] rounded-lg bg-[#fffefb] overflow-hidden">
-      {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-[#eceae3]">
         <button
           onClick={() => setExpanded((p) => !p)}
@@ -264,18 +261,26 @@ function TypeCard({
           >
             <Pencil className="w-4 h-4" />
           </button>
-          <button
-            onClick={handleDelete}
+          <ConfirmAction
+            title="Hapus tipe variasi"
+            message={`Hapus tipe variasi "${type.name}"? Semua nilainya juga akan dihapus.`}
+            confirmLabel="Hapus"
             disabled={deleting || inUse}
-            title={inUse ? "Tidak bisa dihapus: tipe digunakan produk" : "Hapus tipe"}
-            className="p-1.5 rounded text-[#939084] hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-          </button>
+            onConfirm={handleDelete}
+            trigger={(open) => (
+              <button
+                onClick={open}
+                disabled={deleting || inUse}
+                title={inUse ? "Tidak bisa dihapus: tipe digunakan produk" : "Hapus tipe"}
+                className="p-1.5 rounded text-[#939084] hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
+            )}
+          />
         </div>
       </div>
 
-      {/* Values */}
       {expanded && (
         <div className="px-5 py-4">
           <div className="flex flex-wrap gap-2 items-center">
@@ -297,8 +302,6 @@ function TypeCard({
     </article>
   );
 }
-
-// ─── Add Type Form ─────────────────────────────────────────────────────────────
 
 function AddTypeForm({ onAdded }: { onAdded: (t: VariationType) => void }) {
   const [open, setOpen] = useState(false);
@@ -366,22 +369,19 @@ function AddTypeForm({ onAdded }: { onAdded: (t: VariationType) => void }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function VariationsPage() {
   const [types, setTypes] = useState<VariationType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Fetch ──
   const fetchTypes = useCallback(async () => {
     try {
       const res = await fetch("/api/variations/types");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Gagal memuat data");
       setTypes(json.data);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Gagal memuat data");
     } finally {
       setLoading(false);
     }
@@ -389,7 +389,6 @@ export default function VariationsPage() {
 
   useEffect(() => { fetchTypes(); }, [fetchTypes]);
 
-  // ── Handlers ──
   const handleTypeRename = async (id: string, name: string) => {
     const res = await fetch(`/api/variations/types/${id}`, {
       method: "PUT",
@@ -446,12 +445,9 @@ export default function VariationsPage() {
     );
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   return (
     <div className="max-w-3xl mx-auto space-y-8">
 
-      {/* Page Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -470,10 +466,8 @@ export default function VariationsPage() {
         <AddTypeForm onAdded={(t) => setTypes((prev) => [...prev, t])} />
       </div>
 
-      {/* Divider */}
       <div className="border-t border-[#eceae3]" />
 
-      {/* Content */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-[#939084]" />
@@ -488,7 +482,6 @@ export default function VariationsPage() {
           <button onClick={fetchTypes} className="ml-auto text-sm underline">Coba lagi</button>
         </div>
       ) : types.length === 0 ? (
-        /* Empty State */
         <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-[#c5c0b1] rounded-xl bg-[#fffefb]">
           <Tags className="w-10 h-10 text-[#c5c0b1] mb-4" />
           <h3 className="text-base font-semibold text-[#201515] mb-1">Belum ada tipe variasi</h3>
@@ -503,7 +496,6 @@ export default function VariationsPage() {
           </button>
         </div>
       ) : (
-        /* Type List */
         <div className="space-y-3">
           {types.map((type) => (
             <TypeCard
@@ -519,7 +511,6 @@ export default function VariationsPage() {
         </div>
       )}
 
-      {/* Legend */}
       {types.length > 0 && (
         <div className="flex flex-wrap gap-4 text-xs text-[#939084] border-t border-[#eceae3] pt-4">
           <span className="flex items-center gap-1.5">

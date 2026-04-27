@@ -6,7 +6,6 @@ export default withAuth(
     const { token } = req.nextauth;
     const { pathname } = req.nextUrl;
 
-    // Check if user is logged in and trying to access /login
     if (pathname === "/login" && token) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
@@ -16,21 +15,33 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ req, token }) => {
-        // Allow unauthenticated users to access login page
         if (req.nextUrl.pathname === "/login") {
           return true;
         }
 
-        const protectedPrefixes = ["/dashboard", "/stock"];
+        const protectedPrefixes = [
+          "/dashboard",
+          "/stock",
+          "/products",
+          "/variations",
+          "/users",
+        ];
+        const adminPrefixes = [
+          "/stock/in",
+          "/stock/history",
+          "/products/new",
+          "/products/",
+          "/variations",
+          "/users",
+        ];
         const isProtected = protectedPrefixes.some((prefix) =>
           req.nextUrl.pathname.startsWith(prefix)
         );
+        const isAdminOnly = adminPrefixes.some((prefix) =>
+          req.nextUrl.pathname.startsWith(prefix)
+        );
 
-        if (req.nextUrl.pathname.startsWith("/stock/in")) {
-          return token?.role === "ADMIN";
-        }
-
-        if (req.nextUrl.pathname.startsWith("/stock/history")) {
+        if (isAdminOnly) {
           return token?.role === "ADMIN";
         }
 
@@ -48,5 +59,12 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/stock/:path*", "/login"],
+  matcher: [
+    "/dashboard/:path*",
+    "/stock/:path*",
+    "/products/:path*",
+    "/variations/:path*",
+    "/users/:path*",
+    "/login",
+  ],
 };

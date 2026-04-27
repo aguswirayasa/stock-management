@@ -2,9 +2,7 @@ import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { ApiError, apiResponse, requireAdmin, withErrorHandler } from "@/lib/api-helpers";
 import bcrypt from "bcryptjs";
-import type { Role } from "@/generated/prisma/client";
-
-const validRoles = ["ADMIN", "PEGAWAI"] as const;
+import { isUserRole } from "@/lib/user-roles";
 
 export const GET = withErrorHandler(async (_req: NextRequest) => {
   await requireAdmin();
@@ -31,7 +29,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     typeof username !== "string" ||
     typeof name !== "string" ||
     typeof password !== "string" ||
-    !validRoles.includes(role)
+    !isUserRole(role)
   ) {
     throw new ApiError("Username, nama, password, dan role wajib diisi.", 400);
   }
@@ -48,7 +46,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       username,
       name,
       password: hashedPassword,
-      role: role as Role,
+      role,
       isActive: true
     },
     select: {

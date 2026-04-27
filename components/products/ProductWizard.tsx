@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 type Category = { id: string; name: string };
 type VariationValue = { id: string; value: string };
@@ -32,15 +33,12 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Step 1
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
 
-  // Step 2
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string[]>>({});
 
-  // Step 3
   const [defaultPrice, setDefaultPrice] = useState("");
   
   const combinations = cartesian(selectedVariations);
@@ -54,38 +52,37 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
   const handleSave = async () => {
     setLoading(true);
     try {
-      const activeVariationTypes = Object.keys(selectedVariations).filter(k => selectedVariations[k].length > 0);
-      
-      const pRes = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name, categoryId, description,
-          variationTypeIds: activeVariationTypes
-        })
-      });
-      if (!pRes.ok) throw new Error("Failed to create product");
-      const { data: product } = await pRes.json();
+      const activeVariationTypes = variationTypes
+        .map((variationType) => variationType.id)
+        .filter((typeId) => selectedVariations[typeId]?.length > 0);
 
       const activeVariations = Object.fromEntries(
-        Object.entries(selectedVariations).filter(([k, v]) => v.length > 0)
+        Object.entries(selectedVariations).filter(([, values]) => values.length > 0)
       );
 
-      const vRes = await fetch(`/api/products/${product.id}/variants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name, categoryId, description,
+          variationTypeIds: activeVariationTypes,
           combinations: activeVariations,
-          defaultPrice: parseInt(defaultPrice) || 0
-        })
+          defaultPrice: parseInt(defaultPrice, 10) || 0
+        }),
       });
-      if (!vRes.ok) throw new Error("Failed to create variants");
-      
-      router.push('/products');
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(json.error || "Gagal menyimpan produk.");
+      }
+
+      toast.success("Produk berhasil dibuat.");
+      router.push("/products");
       router.refresh();
-    } catch (err) {
-      console.error(err);
-      alert("Error saving product");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menyimpan produk."
+      );
     } finally {
       setLoading(false);
     }
@@ -113,12 +110,11 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
     setSelectedVariations(next);
   };
 
-  const valueMap = new Map();
+  const valueMap = new Map<string, string>();
   variationTypes.forEach(t => t.values.forEach(v => valueMap.set(v.id, v.value)));
 
   return (
     <div className="bg-[#fffefb] border border-[#c5c0b1] rounded-[8px] overflow-hidden">
-      {/* Stepper */}
       <div className="flex border-b border-[#c5c0b1] bg-[#eceae3]/50">
         {[1, 2, 3].map((s) => (
           <div 
@@ -131,7 +127,7 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
                   : 'border-transparent text-[#939084]'
             }`}
           >
-            Step {s}
+            Langkah {s}
           </div>
         ))}
       </div>
@@ -140,34 +136,34 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
         {step === 1 && (
           <div className="space-y-6 max-w-[600px] mx-auto">
             <div>
-              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Product Name</label>
+              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Nama Produk</label>
               <input 
                 type="text" 
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Plastik HD"
+                placeholder="cth. Plastik HD"
                 className="w-full border border-[#c5c0b1] rounded-[5px] px-3 py-2 bg-[#fffefb] text-[#201515] placeholder-[#939084] focus:border-[#ff4f00] focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Category</label>
+              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Kategori</label>
               <select 
                 value={categoryId}
                 onChange={e => setCategoryId(e.target.value)}
                 className="w-full border border-[#c5c0b1] rounded-[5px] px-3 py-2 bg-[#fffefb] text-[#201515] focus:border-[#ff4f00] focus:outline-none"
               >
-                <option value="">Select Category...</option>
+                <option value="">Pilih kategori...</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Description</label>
+              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Deskripsi</label>
               <textarea 
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Product description (optional)"
+                placeholder="Deskripsi produk (opsional)"
                 rows={3}
                 className="w-full border border-[#c5c0b1] rounded-[5px] px-3 py-2 bg-[#fffefb] text-[#201515] placeholder-[#939084] focus:border-[#ff4f00] focus:outline-none"
               />
@@ -178,8 +174,8 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
         {step === 2 && (
           <div className="space-y-8 max-w-[600px] mx-auto">
             <div>
-              <h2 className="text-[24px] font-semibold text-[#201515] mb-1">Select Variation Types</h2>
-              <p className="text-[#939084] text-[16px] mb-4">Choose which variations apply to this product.</p>
+              <h2 className="text-[24px] font-semibold text-[#201515] mb-1">Pilih Tipe Variasi</h2>
+              <p className="text-[#939084] text-[16px] mb-4">Pilih variasi yang berlaku untuk produk ini.</p>
             </div>
             
             <div className="space-y-4">
@@ -229,12 +225,12 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
         {step === 3 && (
           <div className="space-y-6">
              <div>
-              <h2 className="text-[24px] font-semibold text-[#201515] mb-1">SKU Matrix Preview</h2>
-              <p className="text-[#939084] text-[16px] mb-4">Set default price. Individual prices can be edited later.</p>
+              <h2 className="text-[24px] font-semibold text-[#201515] mb-1">Pratinjau Matriks SKU</h2>
+              <p className="text-[#939084] text-[16px] mb-4">Atur harga default. Harga tiap SKU bisa diedit nanti.</p>
             </div>
 
             <div className="max-w-[400px] mb-6">
-              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Default Price (Rp)</label>
+              <label className="block text-[16px] font-semibold text-[#201515] mb-2">Harga Default (Rp)</label>
               <input 
                 type="number" 
                 value={defaultPrice}
@@ -255,13 +251,13 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
                     ))}
                   </div>
                   <div className="text-[14px] text-[#939084] mt-2">
-                    SKU will be auto-generated
+                    SKU akan dibuat otomatis
                   </div>
                 </div>
               ))}
               {combinations.length === 0 && (
                 <div className="col-span-full p-8 text-center text-[#939084] border border-dashed border-[#c5c0b1] rounded-[5px]">
-                  No variations selected. A single default SKU will be created.
+                  Belum ada variasi dipilih. Satu SKU default akan dibuat.
                 </div>
               )}
             </div>
@@ -269,14 +265,13 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
         )}
       </div>
 
-      {/* Action Bar */}
       <div className="border-t border-[#c5c0b1] bg-[#fffefb] p-4 md:px-8 flex justify-between items-center sticky bottom-0 md:static">
         <button 
           onClick={() => setStep(step - 1)}
           disabled={step === 1 || loading}
           className="px-4 py-2 border border-[#c5c0b1] text-[#201515] rounded-[4px] font-semibold disabled:opacity-50 flex items-center gap-2 hover:bg-[#eceae3] transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="w-4 h-4" /> Kembali
         </button>
         
         {step < 3 ? (
@@ -285,7 +280,7 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
             disabled={!canGoNext()}
             className="px-6 py-2 bg-[#ff4f00] text-[#fffefb] rounded-[4px] font-semibold disabled:opacity-50 flex items-center gap-2 hover:opacity-90 transition-opacity"
           >
-            Next <ChevronRight className="w-4 h-4" />
+            Lanjut <ChevronRight className="w-4 h-4" />
           </button>
         ) : (
           <button 
@@ -293,7 +288,7 @@ export function ProductWizard({ categories, variationTypes }: { categories: Cate
             disabled={loading}
             className="px-6 py-2 bg-[#201515] text-[#fffefb] rounded-[4px] font-semibold disabled:opacity-50 flex items-center gap-2 hover:bg-[#36342e] transition-colors"
           >
-            {loading ? "Saving..." : "Save Product"} <Check className="w-4 h-4" />
+            {loading ? "Menyimpan..." : "Simpan Produk"} <Check className="w-4 h-4" />
           </button>
         )}
       </div>

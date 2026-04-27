@@ -1,4 +1,5 @@
 import { DefaultSession, DefaultUser } from "next-auth";
+import type { UserRole } from "@/lib/user-roles";
 
 declare module "next-auth" {
   interface Session {
@@ -6,7 +7,7 @@ declare module "next-auth" {
       id: string;
       name: string;
       username: string;
-      role: "ADMIN" | "PEGAWAI";
+      role: UserRole;
       isActive: boolean;
     } & DefaultSession["user"];
   }
@@ -15,7 +16,7 @@ declare module "next-auth" {
     id: string;
     name: string;
     username: string;
-    role: "ADMIN" | "PEGAWAI";
+    role: UserRole;
     isActive: boolean;
   }
 }
@@ -25,7 +26,7 @@ declare module "next-auth/jwt" {
     id: string;
     name: string;
     username: string;
-    role: "ADMIN" | "PEGAWAI";
+    role: UserRole;
     isActive: boolean;
   }
 }

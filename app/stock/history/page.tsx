@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import {
+  mergeStockTransactions,
+  stockTransactionInclude,
+} from "@/lib/stock-transactions";
 
 export const dynamic = "force-dynamic";
 
@@ -34,43 +38,20 @@ export default async function StockHistoryPage() {
     redirect("/dashboard");
   }
 
-  const include = {
-    variant: {
-      include: {
-        product: true,
-        values: {
-          include: {
-            variationValue: {
-              include: {
-                variationType: true,
-              },
-            },
-          },
-        },
-      },
-    },
-    user: { select: { name: true, username: true } },
-  };
-
   const [stockIns, stockOuts] = await Promise.all([
     prisma.stockIn.findMany({
       take: 100,
       orderBy: { createdAt: "desc" },
-      include,
+      include: stockTransactionInclude,
     }),
     prisma.stockOut.findMany({
       take: 100,
       orderBy: { createdAt: "desc" },
-      include,
+      include: stockTransactionInclude,
     }),
   ]);
 
-  const history = [
-    ...stockIns.map((item) => ({ ...item, type: "IN" as const })),
-    ...stockOuts.map((item) => ({ ...item, type: "OUT" as const })),
-  ]
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 100);
+  const history = mergeStockTransactions(stockIns, stockOuts, 100);
 
   return (
     <div className="space-y-6 pb-8">

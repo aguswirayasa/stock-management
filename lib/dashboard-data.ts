@@ -1,24 +1,8 @@
 import prisma from "@/lib/prisma";
-
-const transactionInclude = {
-  variant: {
-    include: {
-      product: true,
-      values: {
-        include: {
-          variationValue: {
-            include: {
-              variationType: true,
-            },
-          },
-        },
-      },
-    },
-  },
-  user: {
-    select: { name: true, username: true },
-  },
-};
+import {
+  mergeStockTransactions,
+  stockTransactionInclude,
+} from "@/lib/stock-transactions";
 
 export async function getDashboardData() {
   const today = new Date();
@@ -78,21 +62,16 @@ export async function getDashboardData() {
     prisma.stockIn.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: transactionInclude,
+      include: stockTransactionInclude,
     }),
     prisma.stockOut.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: transactionInclude,
+      include: stockTransactionInclude,
     }),
   ]);
 
-  const recentTransactions = [
-    ...stockIns.map((item) => ({ ...item, type: "IN" as const })),
-    ...stockOuts.map((item) => ({ ...item, type: "OUT" as const })),
-  ]
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 5);
+  const recentTransactions = mergeStockTransactions(stockIns, stockOuts, 5);
 
   return {
     totals: {

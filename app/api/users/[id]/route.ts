@@ -8,8 +8,7 @@ import {
 } from "@/lib/api-helpers";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/generated/prisma/client";
-
-const validRoles = ["ADMIN", "PEGAWAI"] as const;
+import { isUserRole } from "@/lib/user-roles";
 
 export const PUT = withErrorHandler(async (
   req: NextRequest,
@@ -20,7 +19,7 @@ export const PUT = withErrorHandler(async (
   const body = await req.json();
   const { name, role, password, isActive } = body;
 
-  if (typeof name !== "string" || !validRoles.includes(role)) {
+  if (typeof name !== "string" || !isUserRole(role)) {
     throw new ApiError("Nama dan role wajib diisi.", 400);
   }
 
@@ -39,7 +38,7 @@ export const PUT = withErrorHandler(async (
   }
 
   const nextIsActive = isActive ?? existingUser.isActive;
-  const nextRole = role as Role;
+  const nextRole = role;
 
   if (
     existingUser.role === "ADMIN" &&

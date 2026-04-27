@@ -2,10 +2,14 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { Plus, Edit2, AlertCircle } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
+import { requirePageAuth } from "@/lib/page-auth";
+import { getProductSummary } from "@/lib/product-summary";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
+  await requirePageAuth();
+
   const products = await prisma.product.findMany({
     include: {
       category: true,
@@ -20,35 +24,33 @@ export default async function ProductsPage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-[32px] md:text-[40px] font-medium leading-[0.9] tracking-tight mb-2">
-              Products
+              Produk
             </h1>
             <p className="text-[#36342e] text-[16px] leading-[1.25]">
-              Manage your product catalog and view stock summaries.
+              Kelola katalog produk dan ringkasan stok.
             </p>
           </div>
           <Link href="/products/new" className="px-6 py-2.5 bg-[#ff4f00] text-[#fffefb] rounded-[4px] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity w-full md:w-auto">
-            <Plus className="w-5 h-5" /> New Product
+            <Plus className="w-5 h-5" /> Produk Baru
           </Link>
         </header>
 
-        {/* Desktop Table */}
         <div className="hidden md:block bg-[#fffefb] border border-[#c5c0b1] rounded-[8px] overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#eceae3]/50 border-b border-[#c5c0b1]">
-                <th className="p-4 font-semibold text-[#201515]">Product Name</th>
-                <th className="p-4 font-semibold text-[#201515]">Category</th>
-                <th className="p-4 font-semibold text-[#201515]">Variants</th>
-                <th className="p-4 font-semibold text-[#201515]">Total Stock</th>
+                <th className="p-4 font-semibold text-[#201515]">Nama Produk</th>
+                <th className="p-4 font-semibold text-[#201515]">Kategori</th>
+                <th className="p-4 font-semibold text-[#201515]">Varian</th>
+                <th className="p-4 font-semibold text-[#201515]">Total Stok</th>
                 <th className="p-4 font-semibold text-[#201515]">Status</th>
-                <th className="p-4 font-semibold text-[#201515] text-right">Actions</th>
+                <th className="p-4 font-semibold text-[#201515] text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {products.map(product => {
-                const totalVariants = product.variants.length;
-                const totalStock = product.variants.reduce((acc, v) => acc + v.stock, 0);
-                const hasLowStock = product.variants.some(v => v.stock <= v.minStock);
+                const { totalVariants, totalStock, hasLowStock } =
+                  getProductSummary(product);
 
                 return (
                   <tr key={product.id} className="border-b border-[#c5c0b1] last:border-0 hover:bg-[#eceae3]/20 transition-colors">
@@ -59,11 +61,11 @@ export default async function ProductsPage() {
                     <td className="p-4">
                       {hasLowStock ? (
                         <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#ff4f00] bg-[#ff4f00]/10 px-2.5 py-1 rounded-[20px]">
-                          <AlertCircle className="w-4 h-4" /> Low Stock
+                          <AlertCircle className="w-4 h-4" /> Stok Rendah
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[#939084]">
-                          In Stock
+                          Stok Aman
                         </span>
                       )}
                     </td>
@@ -78,7 +80,7 @@ export default async function ProductsPage() {
               {products.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-[#939084] italic">
-                    No products found. Add your first product to get started.
+                    Belum ada produk. Tambahkan produk pertama untuk mulai.
                   </td>
                 </tr>
               )}
@@ -86,12 +88,11 @@ export default async function ProductsPage() {
           </table>
         </div>
 
-        {/* Mobile Cards */}
         <div className="md:hidden space-y-4">
           {products.map(product => <ProductCard key={product.id} product={product} />)}
           {products.length === 0 && (
             <div className="p-8 text-center text-[#939084] italic border border-dashed border-[#c5c0b1] rounded-[8px]">
-              No products found.
+              Belum ada produk.
             </div>
           )}
         </div>

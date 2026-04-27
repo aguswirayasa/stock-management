@@ -1,9 +1,16 @@
-import prisma from "@/lib/prisma";
-import { apiResponse, apiError, withErrorHandler, requireAdmin } from "@/lib/api-helpers";
 import { NextRequest } from "next/server";
+import prisma from "@/lib/prisma";
+import {
+  ApiError,
+  apiResponse,
+  requireAdmin,
+  requireAuth,
+  withErrorHandler,
+} from "@/lib/api-helpers";
 
-// GET /api/variations/values?typeId=xxx — list values for a type
 export const GET = withErrorHandler(async (req: NextRequest) => {
+  await requireAuth();
+
   const typeId = req.nextUrl.searchParams.get("typeId");
 
   const values = await prisma.variationValue.findMany({
@@ -18,7 +25,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return apiResponse(values);
 });
 
-// POST /api/variations/values — create a new VariationValue
 export const POST = withErrorHandler(async (req: Request) => {
   await requireAdmin();
 
@@ -26,24 +32,29 @@ export const POST = withErrorHandler(async (req: Request) => {
   const { value, variationTypeId } = body;
 
   if (!value || typeof value !== "string" || value.trim().length === 0) {
-    return apiError("Value is required", 400);
+    throw new ApiError("Nilai variasi wajib diisi.", 400);
   }
-  if (!variationTypeId) {
-    return apiError("variationTypeId is required", 400);
+  if (!variationTypeId || typeof variationTypeId !== "string") {
+    throw new ApiError("Tipe variasi wajib diisi.", 400);
   }
 
   const trimmed = value.trim();
 
-  // Ensure type exists
-  const type = await prisma.variationType.findUnique({ where: { id: variationTypeId } });
-  if (!type) return apiError("Variation type not found", 404);
+  const type = await prisma.variationType.findUnique({
+    where: { id: variationTypeId },
+  });
+  if (!type) {
+    throw new ApiError("Tipe variasi tidak ditemukan.", 404);
+  }
 
-  // Check duplicate within the same type
   const existing = await prisma.variationValue.findUnique({
     where: { variationTypeId_value: { variationTypeId, value: trimmed } },
   });
   if (existing) {
-    return apiError(`Nilai "${trimmed}" sudah ada di tipe "${type.name}"`, 409);
+    throw new ApiError(
+      `Nilai "${trimmed}" sudah ada di tipe "${type.name}".`,
+      409
+    );
   }
 
   const variationValue = await prisma.variationValue.create({
@@ -51,5 +62,9 @@ export const POST = withErrorHandler(async (req: Request) => {
     include: { variationType: { select: { name: true } } },
   });
 
-  return apiResponse(variationValue, 201, `Nilai "${trimmed}" berhasil ditambahkan`);
+  return apiResponse(
+    variationValue,
+    201,
+    `Nilai "${trimmed}" berhasil ditambahkan.`
+  );
 });

@@ -1,11 +1,17 @@
 import prisma from "@/lib/prisma";
-import { apiResponse, apiError, withErrorHandler, requireAdmin } from "@/lib/api-helpers";
+import {
+  ApiError,
+  apiResponse,
+  requireAdmin,
+  requireAuth,
+  withErrorHandler,
+} from "@/lib/api-helpers";
 
-// GET /api/variations/types/[id]
 export const GET = withErrorHandler(async (
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) => {
+  await requireAuth();
   const { id } = await params;
 
   const type = await prisma.variationType.findUnique({
@@ -16,12 +22,13 @@ export const GET = withErrorHandler(async (
     },
   });
 
-  if (!type) return apiError("Variation type not found", 404);
+  if (!type) {
+    throw new ApiError("Tipe variasi tidak ditemukan.", 404);
+  }
 
   return apiResponse(type);
 });
 
-// PUT /api/variations/types/[id] — rename
 export const PUT = withErrorHandler(async (
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -32,16 +39,17 @@ export const PUT = withErrorHandler(async (
   const { name } = body;
 
   if (!name || typeof name !== "string" || name.trim().length === 0) {
-    return apiError("Name is required", 400);
+    throw new ApiError("Nama tipe variasi wajib diisi.", 400);
   }
 
   const trimmed = name.trim();
 
-  // Check duplicate (excluding self)
   const existing = await prisma.variationType.findFirst({
     where: { name: trimmed, NOT: { id } },
   });
-  if (existing) return apiError(`Variation type "${trimmed}" already exists`, 409);
+  if (existing) {
+    throw new ApiError(`Tipe variasi "${trimmed}" sudah ada.`, 409);
+  }
 
   const updated = await prisma.variationType.update({
     where: { id },
@@ -49,10 +57,9 @@ export const PUT = withErrorHandler(async (
     include: { values: true },
   });
 
-  return apiResponse(updated, 200, `Tipe variasi diperbarui menjadi "${trimmed}"`);
+  return apiResponse(updated, 200, `Tipe variasi diperbarui menjadi "${trimmed}".`);
 });
 
-// DELETE /api/variations/types/[id] — validate not in use
 export const DELETE = withErrorHandler(async (
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -60,19 +67,18 @@ export const DELETE = withErrorHandler(async (
   await requireAdmin();
   const { id } = await params;
 
-  // Check if any product uses this variation type
   const usageCount = await prisma.productVariationType.count({
     where: { variationTypeId: id },
   });
 
   if (usageCount > 0) {
-    return apiError(
-      `Tidak bisa dihapus: tipe variasi ini digunakan oleh ${usageCount} produk`,
+    throw new ApiError(
+      `Tidak bisa dihapus: tipe variasi ini digunakan oleh ${usageCount} produk.`,
       409
     );
   }
 
   await prisma.variationType.delete({ where: { id } });
 
-  return apiResponse(null, 200, "Tipe variasi berhasil dihapus");
+  return apiResponse(null, 200, "Tipe variasi berhasil dihapus.");
 });
